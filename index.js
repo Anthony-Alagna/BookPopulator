@@ -1,7 +1,6 @@
 "use strict";
 
 import { Client } from "@notionhq/client";
-import { Console } from "console";
 import got from "got";
 import fs from "fs";
 
@@ -33,19 +32,11 @@ async function addItem(text) {
   }
 }
 
-async function queryAPIs() {
+async function queryNotionDatabase() {
   try {
     const response = await notion.databases.query({ database_id: databaseId });
     const results = response.results;
-    var notionPageTitles = [];
-    for (let index = 0; index < results.length; index++) {
-      notionPageTitles[index] =
-        response.results[index].properties.Name.title[0].plain_text;
-      //console.log(element);
-    }
-    console.log("notionPageTitles =" + notionPageTitles);
-    await GoogleBooksAPIData(notionPageTitles);
-    return notionPageTitles;
+    return results; //refactor to return the notionPageObjects
   } catch (error) {
     console.error(error.body);
   }
@@ -59,13 +50,15 @@ async function GoogleBooksAPIData(titlesArray) {
     //select only the data we need about each book
     // from the full googlebooksresponse
     // splits each related book data up into
-    return googleBooksResponse;
   }
+  return googleBooksResponse;
 }
 
 async function fileUpdate(data) {
-  //refactor
-  const data = JSON.stringify(googleBooksResponse);
+  // this function is used to cache the googleBooksAPI response data,
+  // updates the googleBooksResponse.JSON file with any new data when a
+  // title is added to the notion database
+  data = JSON.stringify(googleBooksResponse);
   fs.writeFile("./googleBooksResponses.JSON", data, "utf8", (err) => {
     if (err) {
       console.log("error writing file:" + err);
@@ -77,15 +70,29 @@ async function fileUpdate(data) {
 
 async function GoogleBooksAPISearch(bookTitle) {
   var url = urlMaker(bookTitle);
+  //GET request to GoogleBooksAPI returns response as JSON object
   return got(url).json();
 }
 
-async function updateProperties(GoogleBooksData, notionPageIDs) {
+async function updateProperties() {
   //this method takes the GoogleBooksData returned by the Google Books API in JSON format and
   // matches each element in GoogleBooksData[] by title to its associated notionPageID
   //the notionPageID is necessary because this is how we will select each page to be updated by the
   //notion.pages.update() function
+  let pageTitles = await queryNotionDatabase(); // refactor to use extractPageTitles();
+  let googleJSONDataArray =  GoogleBooksAPIData(pageTitles);
+  for (let index = 0; index < googleJSONDataArray.length; index++) {
+    notion.pages.update({
+        page_id: pageIDs      
+    });
+    
+  }
+
+
 }
+
+
+//helper functions
 
 function urlMaker(searchTerm) {
   //Takes the search term, replaces any spaces with + for the URl, then concantinates into the final
@@ -96,7 +103,13 @@ function urlMaker(searchTerm) {
   var finalurl = baseUrl + "q=" + st;
   return finalurl;
 }
-
-console.log(queryAPIs());
-
+async function extractPageTitles(){
+  const pages = await queryNotionDatabase();
+  var pageTitles = [];
+  for (let index = 0; index < pages.length; index++) {
+    pageTitles[index] = pages[index].properties.Name.title[0].plain_text;
+  }
+}
+extractPageTitles();
+//updateProperties();
 //addItem("Yurts in Big Sur, California")
