@@ -2,9 +2,8 @@
 
 import { Client } from "@notionhq/client";
 import { Console } from "console";
-import got from 'got';
-import fs from 'fs';
-
+import got from "got";
+import fs from "fs";
 
 const notion = new Client({ auth: process.env.NOTION_KEY });
 //const axios = require('axios');
@@ -34,48 +33,46 @@ async function addItem(text) {
   }
 }
 
-
-async function queryPages() {
+async function queryAPIs() {
   try {
     const response = await notion.databases.query({ database_id: databaseId });
     const results = response.results;
-    var element = [];
-    for (let index = 0; index < results.length ; index++) {
-      element[index] = response.results[index].properties.Name.title[0].plain_text;
+    var notionPageTitles = [];
+    for (let index = 0; index < results.length; index++) {
+      notionPageTitles[index] =
+        response.results[index].properties.Name.title[0].plain_text;
       //console.log(element);
     }
-    console.log(element);
-    var googleBooksResponse = [];
-    for (let index = 0; index < element.length; index++) {
-      googleBooksResponse[index] = await GoogleBooksAPISearch(element[index]);
-      googleBooksResponse[index] = googleBooksResponse[index].items[0].volumeInfo
-      //select only the data we need about each book
-      // from the full googlebooksresponse
-      // splits each related book data up into 
-    
-    }
-/*     const data = JSON.stringify(googleBooksResponse);
-    fs.writeFile('./googleBooksResponses.JSON', data, 'utf8', (err) =>{
-
-      if(err){
-        console.log("error writing file:" + err);
-      }
-      else{
-        console.log("File written sucessfully!");
-      }
-    }); */
-
-
-    for (let index = 0; index < results.length; index++) {
-      var id = results[index].id;
-      console.log(results[index].properties.Summary.rich_text);
-      //googleBooksResponse[index].description
-      
-    }
-
+    console.log("notionPageTitles =" + notionPageTitles);
+    await GoogleBooksAPIData(notionPageTitles);
+    return notionPageTitles;
   } catch (error) {
     console.error(error.body);
   }
+}
+
+async function GoogleBooksAPIData(titlesArray) {
+  let googleBooksResponse = [];
+  for (let index = 0; index < titlesArray.length; index++) {
+    googleBooksResponse[index] = await GoogleBooksAPISearch(titlesArray[index]);
+    googleBooksResponse[index] = googleBooksResponse[index].items[0].volumeInfo;
+    //select only the data we need about each book
+    // from the full googlebooksresponse
+    // splits each related book data up into
+    return googleBooksResponse;
+  }
+}
+
+async function fileUpdate(data) {
+  //refactor
+  const data = JSON.stringify(googleBooksResponse);
+  fs.writeFile("./googleBooksResponses.JSON", data, "utf8", (err) => {
+    if (err) {
+      console.log("error writing file:" + err);
+    } else {
+      console.log("File written sucessfully!");
+    }
+  });
 }
 
 async function GoogleBooksAPISearch(bookTitle) {
@@ -83,12 +80,11 @@ async function GoogleBooksAPISearch(bookTitle) {
   return got(url).json();
 }
 
-async function updateProperties(GoogleBooksData, notionPageIDs){
+async function updateProperties(GoogleBooksData, notionPageIDs) {
   //this method takes the GoogleBooksData returned by the Google Books API in JSON format and
   // matches each element in GoogleBooksData[] by title to its associated notionPageID
   //the notionPageID is necessary because this is how we will select each page to be updated by the
   //notion.pages.update() function
-  
 }
 
 function urlMaker(searchTerm) {
@@ -101,6 +97,6 @@ function urlMaker(searchTerm) {
   return finalurl;
 }
 
-queryPages();
+console.log(queryAPIs());
 
 //addItem("Yurts in Big Sur, California")
