@@ -85,12 +85,7 @@ async function updateProperties() {
   let notionPagesJSON = await queryNotionDatabase();
   let googleJSONDataArray =  await GoogleBooksAPIData(pageTitles);
   let colors = ["brown", "blue", "red", "green", "orange"];
-  let pageIDs = [];
-  let bookPublishers = [];
-  let bookAuthor = [];
-  let bookSummary = [];
-  let bookPublishDate = [];
-  let bookGenres = [];
+  let pageIDs = [], bookPublishers = [], bookAuthor = [], bookSummary = [], bookPublishDate = [], bookGenres = [];
   let reg = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/
   let reg1 = /^\d{4}-(0[1-9]|1[0-2])/
   let reg2 =/\d{4}/
@@ -122,15 +117,20 @@ async function updateProperties() {
       bookPublishDate[index] =  googleJSONDataArray[index].publishedDate +"-01-01"
     }
     else if(googleJSONDataArray[index].publishedDate.search(reg3) == 0){
-      console.log("The problem is at index ["+ index + "] with value: " + googleJSONDataArray[index]);
       bookPublishDate[index] = "0" + googleJSONDataArray[index].publishedDate
-      console.log("New Value = " + bookPublishDate[index]); 
     }
 
+    try {
+      bookGenres[index] = googleJSONDataArray[index].categories[0]
+      bookGenres[index] = bookGenres[index].replace(/,/i ," &")
+    }
+    catch(TypeError){
+      bookGenres[index] = "Unknown"
+    }
 
   //end main assignment loop
   }
-  console.log(bookPublishDate);
+  console.log("BOOK GENRE 11 = "+ bookGenres[11]);
 
   
    for (let index = 0; index < notionPagesJSON.length; index++) {
@@ -160,11 +160,17 @@ async function updateProperties() {
             "start": bookPublishDate[index], "end": null, "time_zone": null
           },
         },
+        "Genre":{
+          "multi_select":[
+            {
+              "name": bookGenres[index]
+            },
+          ]
+        },
       },
     });
-    
-  } 
 
+  } 
 }
 
 
