@@ -3,36 +3,11 @@
 import { Client } from "@notionhq/client";
 import got from "got";
 import fs from "fs";
-import { formatWithOptions } from "util";
-import { randomInt } from "crypto";
 
 const notion = new Client({ auth: process.env.NOTION_KEY });
 //const axios = require('axios');
 
 const databaseId = process.env.NOTION_DATABASE_ID;
-
-async function addItem(text) {
-  try {
-    const response = await notion.pages.create({
-      parent: { database_id: databaseId },
-      properties: {
-        title: {
-          title: [
-            {
-              text: {
-                content: text,
-              },
-            },
-          ],
-        },
-      },
-    });
-    console.log(response);
-    console.log("Success! Entry added.");
-  } catch (error) {
-    console.error(error.body);
-  }
-}
 
 async function queryNotionDatabase() {
   try {
@@ -83,96 +58,100 @@ async function updateProperties() {
   //notion.pages.update() function
   let pageTitles = await extractPageTitles();
   let notionPagesJSON = await queryNotionDatabase();
-  let googleJSONDataArray =  await GoogleBooksAPIData(pageTitles);
+  let googleJSONDataArray = await GoogleBooksAPIData(pageTitles);
   let colors = ["brown", "blue", "red", "green", "orange"];
-  let pageIDs = [], bookPublishers = [], bookAuthor = [], bookSummary = [], bookPublishDate = [], bookGenres = [];
-  let reg = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/
-  let reg1 = /^\d{4}-(0[1-9]|1[0-2])/
-  let reg2 =/\d{4}/
-  let reg3 = /\d{3}/
+  let pageIDs = [],
+    bookPublishers = [],
+    bookAuthor = [],
+    bookSummary = [],
+    bookPublishDate = [],
+    bookGenres = [];
+  let reg = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+  let reg1 = /^\d{4}-(0[1-9]|1[0-2])/;
+  let reg2 = /\d{4}/;
+  let reg3 = /\d{3}/;
 
   for (let index = 0; index < notionPagesJSON.length; index++) {
     pageIDs[index] = notionPagesJSON[index].id;
   }
   for (let index = 0; index < googleJSONDataArray.length; index++) {
-    bookPublishers[index] = googleJSONDataArray[index].publisher
-    bookAuthor[index] = googleJSONDataArray[index].authors[0]
+    bookPublishers[index] = googleJSONDataArray[index].publisher;
+    bookAuthor[index] = googleJSONDataArray[index].authors[0];
     if (bookPublishers[index] == undefined) {
       bookPublishers[index] = "?";
     }
-    if(bookSummary[index] == undefined){
+    if (bookSummary[index] == undefined) {
       bookSummary[index] = "?";
     }
-    if(googleJSONDataArray[index].description != undefined){
-      bookSummary[index] =  truncateString(googleJSONDataArray[index].description, 500)
+    if (googleJSONDataArray[index].description != undefined) {
+      bookSummary[index] = truncateString(
+        googleJSONDataArray[index].description,
+        500
+      );
     }
-    if(googleJSONDataArray[index].publishedDate.search(reg) == 0){
-      bookPublishDate[index] = googleJSONDataArray[index].publishedDate
-    }
-    else if(googleJSONDataArray[index].publishedDate.search(reg1) == 0){
-      bookPublishDate[index] =  googleJSONDataArray[index].publishedDate +"-01"
-
-    }
-    else if(googleJSONDataArray[index].publishedDate.search(reg2) == 0){
-      bookPublishDate[index] =  googleJSONDataArray[index].publishedDate +"-01-01"
-    }
-    else if(googleJSONDataArray[index].publishedDate.search(reg3) == 0){
-      bookPublishDate[index] = "0" + googleJSONDataArray[index].publishedDate
+    if (googleJSONDataArray[index].publishedDate.search(reg) == 0) {
+      bookPublishDate[index] = googleJSONDataArray[index].publishedDate;
+    } else if (googleJSONDataArray[index].publishedDate.search(reg1) == 0) {
+      bookPublishDate[index] = googleJSONDataArray[index].publishedDate + "-01";
+    } else if (googleJSONDataArray[index].publishedDate.search(reg2) == 0) {
+      bookPublishDate[index] =
+        googleJSONDataArray[index].publishedDate + "-01-01";
+    } else if (googleJSONDataArray[index].publishedDate.search(reg3) == 0) {
+      bookPublishDate[index] = "0" + googleJSONDataArray[index].publishedDate;
     }
 
     try {
-      bookGenres[index] = googleJSONDataArray[index].categories[0]
-      bookGenres[index] = bookGenres[index].replace(/,/i ," &")
-    }
-    catch(TypeError){
-      bookGenres[index] = "Unknown"
+      bookGenres[index] = googleJSONDataArray[index].categories[0];
+      bookGenres[index] = bookGenres[index].replace(/,/i, " &");
+    } catch (TypeError) {
+      bookGenres[index] = "Unknown";
     }
 
-  //end main assignment loop
+    //end main assignment loop
   }
-  console.log("BOOK GENRE 11 = "+ bookGenres[11]);
 
-  
-   for (let index = 0; index < notionPagesJSON.length; index++) {
+  for (let index = 0; index < notionPagesJSON.length; index++) {
     await notion.pages.update({
       page_id: pageIDs[index],
-      properties:{
-        "Publisher":{
-          "select":{
-            "name": bookPublishers[index],
+      properties: {
+        Publisher: {
+          select: {
+            name: bookPublishers[index],
           },
         },
-        "Author":{
-          "select":{
-            "name": bookAuthor[index],
+        Author: {
+          select: {
+            name: bookAuthor[index],
           },
         },
-        "Summary":{
-          "rich_text":[{
-            "type": "text",
-            "text":{
-              "content": bookSummary[index]
-            },
-          }],
-        },
-        "Publishing/Release Date":{
-          "date": {
-            "start": bookPublishDate[index], "end": null, "time_zone": null
-          },
-        },
-        "Genre":{
-          "multi_select":[
+        Summary: {
+          rich_text: [
             {
-              "name": bookGenres[index]
+              type: "text",
+              text: {
+                content: bookSummary[index],
+              },
             },
-          ]
+          ],
+        },
+        "Publishing/Release Date": {
+          date: {
+            start: bookPublishDate[index],
+            end: null,
+            time_zone: null,
+          },
+        },
+        Genre: {
+          multi_select: [
+            {
+              name: bookGenres[index],
+            },
+          ],
         },
       },
     });
-
-  } 
+  }
 }
-
 
 //helper functions
 
@@ -185,7 +164,7 @@ function urlMaker(searchTerm) {
   var finalurl = baseUrl + "q=" + st;
   return finalurl;
 }
-async function extractPageTitles(){
+async function extractPageTitles() {
   const pages = await queryNotionDatabase();
   var pageTitles = [];
   for (let index = 0; index < pages.length; index++) {
@@ -195,11 +174,10 @@ async function extractPageTitles(){
 }
 function truncateString(string, limit) {
   if (string.length > limit) {
-    return string.substring(0, limit) + "..."
+    return string.substring(0, limit) + "...";
   } else {
-    return string
+    return string;
   }
 }
 
 updateProperties();
-
