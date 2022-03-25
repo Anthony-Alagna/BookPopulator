@@ -89,6 +89,12 @@ async function updateProperties() {
   let bookPublishers = [];
   let bookAuthor = [];
   let bookSummary = [];
+  let bookPublishDate = [];
+  let bookGenres = [];
+  let reg = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/
+  let reg1 = /^\d{4}-(0[1-9]|1[0-2])/
+  let reg2 =/\d{4}/
+  let reg3 = /\d{3}/
 
   for (let index = 0; index < notionPagesJSON.length; index++) {
     pageIDs[index] = notionPagesJSON[index].id;
@@ -100,21 +106,32 @@ async function updateProperties() {
       bookPublishers[index] = "?";
     }
     if(bookSummary[index] == undefined){
-      bookSummary[index] = " ";
+      bookSummary[index] = "?";
     }
-
-    //truncateString(googleJSONDataArray[index].description, 500)
     if(googleJSONDataArray[index].description != undefined){
       bookSummary[index] =  truncateString(googleJSONDataArray[index].description, 500)
     }
+    if(googleJSONDataArray[index].publishedDate.search(reg) == 0){
+      bookPublishDate[index] = googleJSONDataArray[index].publishedDate
+    }
+    else if(googleJSONDataArray[index].publishedDate.search(reg1) == 0){
+      bookPublishDate[index] =  googleJSONDataArray[index].publishedDate +"-01"
 
-/*     if(notionPagesJSON[index].properties.Summary.rich_text[0] != undefined | notionPagesJSON[index].properties.Summary.rich_text[0] == " " ){
-      bookSummary[index] = notionPagesJSON[index].properties.Summary.rich_text[0].text.content
-    } */
+    }
+    else if(googleJSONDataArray[index].publishedDate.search(reg2) == 0){
+      bookPublishDate[index] =  googleJSONDataArray[index].publishedDate +"-01-01"
+    }
+    else if(googleJSONDataArray[index].publishedDate.search(reg3) == 0){
+      console.log("The problem is at index ["+ index + "] with value: " + googleJSONDataArray[index]);
+      bookPublishDate[index] = "0" + googleJSONDataArray[index].publishedDate
+      console.log("New Value = " + bookPublishDate[index]); 
+    }
+
+
+  //end main assignment loop
   }
-  console.log(bookPublishers);
-  console.log(bookAuthor);
-  console.log(bookSummary);
+  console.log(bookPublishDate);
+
   
    for (let index = 0; index < notionPagesJSON.length; index++) {
     await notion.pages.update({
@@ -137,6 +154,11 @@ async function updateProperties() {
               "content": bookSummary[index]
             },
           }],
+        },
+        "Publishing/Release Date":{
+          "date": {
+            "start": bookPublishDate[index], "end": null, "time_zone": null
+          },
         },
       },
     });
@@ -172,6 +194,6 @@ function truncateString(string, limit) {
     return string
   }
 }
+
 updateProperties();
-//updateProperties();
-//addItem("Yurts in Big Sur, California")
+
