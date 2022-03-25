@@ -88,6 +88,7 @@ async function updateProperties() {
   let pageIDs = [];
   let bookPublishers = [];
   let bookAuthor = [];
+  let bookSummary = [];
 
   for (let index = 0; index < notionPagesJSON.length; index++) {
     pageIDs[index] = notionPagesJSON[index].id;
@@ -98,11 +99,24 @@ async function updateProperties() {
     if (bookPublishers[index] == undefined) {
       bookPublishers[index] = "?";
     }
+    if(bookSummary[index] == undefined){
+      bookSummary[index] = " ";
+    }
+
+    //truncateString(googleJSONDataArray[index].description, 500)
+    if(googleJSONDataArray[index].description != undefined){
+      bookSummary[index] =  truncateString(googleJSONDataArray[index].description, 500)
+    }
+
+/*     if(notionPagesJSON[index].properties.Summary.rich_text[0] != undefined | notionPagesJSON[index].properties.Summary.rich_text[0] == " " ){
+      bookSummary[index] = notionPagesJSON[index].properties.Summary.rich_text[0].text.content
+    } */
   }
   console.log(bookPublishers);
   console.log(bookAuthor);
+  console.log(bookSummary);
   
-  for (let index = 0; index < notionPagesJSON.length; index++) {
+   for (let index = 0; index < notionPagesJSON.length; index++) {
     await notion.pages.update({
       page_id: pageIDs[index],
       properties:{
@@ -116,10 +130,18 @@ async function updateProperties() {
             "name": bookAuthor[index],
           },
         },
+        "Summary":{
+          "rich_text":[{
+            "type": "text",
+            "text":{
+              "content": bookSummary[index]
+            },
+          }],
+        },
       },
     });
     
-  }
+  } 
 
 }
 
@@ -142,6 +164,13 @@ async function extractPageTitles(){
     pageTitles[index] = pages[index].properties.Name.title[0].plain_text;
   }
   return pageTitles;
+}
+function truncateString(string, limit) {
+  if (string.length > limit) {
+    return string.substring(0, limit) + "..."
+  } else {
+    return string
+  }
 }
 updateProperties();
 //updateProperties();
