@@ -3,6 +3,8 @@
 import { Client } from "@notionhq/client";
 import got from "got";
 import fs from "fs";
+import { formatWithOptions } from "util";
+import { randomInt } from "crypto";
 
 const notion = new Client({ auth: process.env.NOTION_KEY });
 //const axios = require('axios');
@@ -54,12 +56,12 @@ async function GoogleBooksAPIData(titlesArray) {
   return googleBooksResponse;
 }
 
-async function fileUpdate(data) {
+async function fileUpdate(input) {
   // this function is used to cache the googleBooksAPI response data,
   // updates the googleBooksResponse.JSON file with any new data when a
   // title is added to the notion database
-  data = JSON.stringify(googleBooksResponse);
-  fs.writeFile("./googleBooksResponses.JSON", data, "utf8", (err) => {
+  const data = JSON.stringify(input);
+  fs.writeFile("./notionPages.JSON", data, "utf8", (err) => {
     if (err) {
       console.log("error writing file:" + err);
     } else {
@@ -79,15 +81,45 @@ async function updateProperties() {
   // matches each element in GoogleBooksData[] by title to its associated notionPageID
   //the notionPageID is necessary because this is how we will select each page to be updated by the
   //notion.pages.update() function
-  let pageTitles = await queryNotionDatabase(); // refactor to use extractPageTitles();
-  let googleJSONDataArray =  GoogleBooksAPIData(pageTitles);
+  let pageTitles = await extractPageTitles();
+  let notionPagesJSON = await queryNotionDatabase();
+  let googleJSONDataArray =  await GoogleBooksAPIData(pageTitles);
+  let colors = ["brown", "blue", "red", "green", "orange"];
+  let pageIDs = [];
+  let bookPublishers = [];
+  let bookAuthor = [];
+
+  for (let index = 0; index < notionPagesJSON.length; index++) {
+    pageIDs[index] = notionPagesJSON[index].id;
+  }
   for (let index = 0; index < googleJSONDataArray.length; index++) {
-    notion.pages.update({
-        page_id: pageIDs      
+    bookPublishers[index] = googleJSONDataArray[index].publisher
+    bookAuthor[index] = googleJSONDataArray[index].authors[0]
+    if (bookPublishers[index] == undefined) {
+      bookPublishers[index] = "?";
+    }
+  }
+  console.log(bookPublishers);
+  console.log(bookAuthor);
+  
+  for (let index = 0; index < notionPagesJSON.length; index++) {
+    await notion.pages.update({
+      page_id: pageIDs[index],
+      properties:{
+        "Publisher":{
+          "select":{
+            "name": bookPublishers[index],
+          },
+        },
+        "Author":{
+          "select":{
+            "name": bookAuthor[index],
+          },
+        },
+      },
     });
     
   }
-
 
 }
 
@@ -109,7 +141,8 @@ async function extractPageTitles(){
   for (let index = 0; index < pages.length; index++) {
     pageTitles[index] = pages[index].properties.Name.title[0].plain_text;
   }
+  return pageTitles;
 }
-extractPageTitles();
+updateProperties();
 //updateProperties();
 //addItem("Yurts in Big Sur, California")
